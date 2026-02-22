@@ -33,7 +33,6 @@
             justify-content: center;
         }
         
-        /* УВЕЛИЧИЛ ОБЛАСТЬ КАРТИНКИ */
         .image-zone {
             position: relative;
             width: 900px;
@@ -49,33 +48,43 @@
         #gameImage {
             width: 100%;
             height: 100%;
-            object-fit: contain;  /* Показывает всю картинку целиком */
+            object-fit: contain;
             display: block;
             background: #2a3a4a;
         }
         
-        /* КРУГЛАЯ ЛУПА */
+        /* ЛУПА - ТЕПЕРЬ ЧЕТКАЯ (БЕЗ РАЗМЫТИЯ) */
         .magnifier-circle {
             position: absolute;
             width: 140px;
             height: 140px;
             border-radius: 50%;
-            border: 5px solid gold;
-            background: rgba(255,255,255,0.2);
-            box-shadow: 0 0 40px gold, inset 0 0 30px white;
+            border: 4px solid white;
+            background: transparent;
+            box-shadow: 0 0 0 3px gold, 0 0 20px gold;
             pointer-events: none;
-            z-index: 10;
+            z-index: 20;
             display: none;
             transform: translate(-50%, -50%);
-            backdrop-filter: blur(4px);
+            /* Убрал backdrop-filter - больше нет размытия */
         }
         
-        /* СПИСОК ПРЕДМЕТОВ */
+        /* Канвас для анимации */
+        #effectCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 15;
+        }
+        
         .items-list {
             background: #2a3f4e;
             border-radius: 40px;
             padding: 30px 25px;
-            width: 300px;
+            width: 320px;
             border: 4px solid #e9b87a;
             color: white;
             box-shadow: inset 0 0 20px #1a2a3a;
@@ -104,17 +113,19 @@
             border-radius: 60px;
             border-left: 10px solid #f0b87a;
             box-shadow: 0 6px 0 #0a1a2a;
-            transition: 0.2s;
+            transition: 0.3s;
             display: flex;
             align-items: center;
             gap: 15px;
         }
         
+        /* Стиль для НАЙДЕННЫХ предметов - зачеркивание */
         .item.found {
-            background: #1e5a4a;
-            border-left-color: #8fecb0;
+            background: #2a5a4a;
+            border-left-color: #7fe0b2;
             text-decoration: line-through;
-            opacity: 0.8;
+            opacity: 0.7;
+            transform: scale(0.98);
             box-shadow: none;
         }
         
@@ -167,11 +178,11 @@
 </head>
 <body>
     <div class="game-container">
-        <div class="instruction">🔍 НАВЕДИ ЛУПУ НА ПРЕДМЕТ И КЛИКНИ, ЧТОБЫ НАЙТИ</div>
+        <div class="instruction">🔍 НАВЕДИ ЛУПУ И КЛИКНИ НА ПРЕДМЕТ</div>
         <div class="game-panel">
             <div class="image-zone" id="imageZone">
-                <!-- ТВОЯ КАРТИНКА ИЗ ПАПКИ -->
                 <img src="lupagame.jpg" id="gameImage" alt="Найди игрушки">
+                <canvas id="effectCanvas"></canvas>
                 <div class="magnifier-circle" id="magnifier"></div>
             </div>
             
@@ -186,7 +197,7 @@
 
     <script>
         // --------------------------------------------------------
-        // ТВОИ ПРЕДМЕТЫ (координаты примерные, подстроим позже)
+        // ТВОИ ПРЕДМЕТЫ (подстрой координаты под свою картинку)
         // --------------------------------------------------------
         const items = [
             { name: "🐘 СЛОН", emoji: "🐘", x: 300, y: 250, radius: 50, found: false },
@@ -204,14 +215,19 @@
         const magnifier = document.getElementById('magnifier');
         const itemsContainer = document.getElementById('itemsContainer');
         const messageDiv = document.getElementById('message');
+        const effectCanvas = document.getElementById('effectCanvas');
+        const ctx = effectCanvas.getContext('2d');
 
-        // ОТОБРАЖЕНИЕ СПИСКА ПРЕДМЕТОВ
+        // Для анимации
+        let animationActive = false;
+        let animX = 0, animY = 0, animRadius = 0, animProgress = 0;
+
+        // ОТОБРАЖЕНИЕ СПИСКА ПРЕДМЕТОВ (с зачеркиванием найденных)
         function updateItemsList() {
             let html = '';
             items.forEach(item => {
-                if (!item.found) {
-                    html += `<div class="item"><span class="item-emoji">${item.emoji}</span> ${item.name}</div>`;
-                }
+                const foundClass = item.found ? 'found' : '';
+                html += `<div class="item ${foundClass}"><span class="item-emoji">${item.emoji}</span> ${item.name}</div>`;
             });
             itemsContainer.innerHTML = html;
 
@@ -222,7 +238,43 @@
             }
         }
 
-        // ОБРАБОТКА КЛИКА (ПРОВЕРКА, ПОПАЛ ЛИ В ПРЕДМЕТ)
+        // АНИМАЦИЯ ВСПЫШКИ (зеленый круг)
+        function startAnimation(x, y) {
+            animX = x;
+            animY = y;
+            animProgress = 1.0; // Начинаем с максимума
+            animationActive = true;
+            requestAnimationFrame(drawAnimation);
+        }
+
+        function drawAnimation() {
+            if (!animationActive) return;
+
+            // Очищаем канвас
+            ctx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
+
+            // Рисуем круг с прозрачностью
+            ctx.beginPath();
+            ctx.arc(animX, animY, 50 * (1 + (1 - animProgress) * 2), 0, 2 * Math.PI);
+            ctx.fillStyle = `rgba(100, 255, 100, ${animProgress * 0.7})`;
+            ctx.fill();
+            
+            // Второй круг поменьше
+            ctx.beginPath();
+            ctx.arc(animX, animY, 30 * animProgress, 0, 2 * Math.PI);
+            ctx.fillStyle = `rgba(255, 255, 100, ${animProgress})`;
+            ctx.fill();
+
+            animProgress -= 0.05;
+            if (animProgress <= 0) {
+                animationActive = false;
+                ctx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
+            } else {
+                requestAnimationFrame(drawAnimation);
+            }
+        }
+
+        // ОБРАБОТКА КЛИКА
         imageZone.addEventListener('click', (e) => {
             const rect = imageZone.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
@@ -234,6 +286,7 @@
             const imgX = clickX * scaleX;
             const imgY = clickY * scaleY;
 
+            // Проверяем каждый предмет
             items.forEach(item => {
                 if (!item.found) {
                     const dx = imgX - item.x;
@@ -241,14 +294,18 @@
                     const distance = Math.sqrt(dx*dx + dy*dy);
                     if (distance < item.radius) {
                         item.found = true;
+                        
+                        // Запускаем анимацию в месте клика
+                        startAnimation(clickX, clickY);
+                        
+                        // Обновляем список
+                        updateItemsList();
                     }
                 }
             });
-
-            updateItemsList();
         });
 
-        // ЛУПА СЛЕДУЕТ ЗА МЫШКОЙ
+        // ЛУПА (теперь просто обводка, без размытия)
         imageZone.addEventListener('mousemove', (e) => {
             const rect = imageZone.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -267,21 +324,30 @@
         function resetGame() {
             items.forEach(item => item.found = false);
             updateItemsList();
+            ctx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
         }
+
+        // НАСТРОЙКА РАЗМЕРОВ КАНВАСА
+        function resizeCanvas() {
+            const rect = imageZone.getBoundingClientRect();
+            effectCanvas.width = rect.width;
+            effectCanvas.height = rect.height;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
 
         // ЖДЁМ ЗАГРУЗКИ КАРТИНКИ
         image.onload = () => {
-            console.log('Картинка загружена! Размер:', image.naturalWidth, 'x', image.naturalHeight);
+            console.log('Картинка загружена!');
+            resizeCanvas();
             updateItemsList();
         };
 
-        // ЕСЛИ КАРТИНКА УЖЕ ЗАГРУЖЕНА
         if (image.complete) {
-            console.log('Картинка уже загружена');
+            resizeCanvas();
             updateItemsList();
         }
 
-        // ПЕРВОНАЧАЛЬНОЕ ОТОБРАЖЕНИЕ
         updateItemsList();
     </script>
 </body>
