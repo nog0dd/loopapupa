@@ -53,7 +53,7 @@
             background: #2a3a4a;
         }
         
-        /* ЛУПА - ТЕПЕРЬ ЧЕТКАЯ (БЕЗ РАЗМЫТИЯ) */
+        /* ЛУПА - четкая */
         .magnifier-circle {
             position: absolute;
             width: 140px;
@@ -66,18 +66,31 @@
             z-index: 20;
             display: none;
             transform: translate(-50%, -50%);
-            /* Убрал backdrop-filter - больше нет размытия */
         }
         
-        /* Канвас для анимации */
-        #effectCanvas {
+        /* Канвас для отладки */
+        #debugCanvas {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 15;
+            z-index: 25;
+        }
+        
+        /* Панель отладки */
+        .debug-panel {
+            background: rgba(0,0,0,0.8);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 18px;
+            padding: 15px 25px;
+            border-radius: 50px;
+            margin-top: 20px;
+            border: 2px solid #0f0;
+            text-align: center;
+            width: 100%;
         }
         
         .items-list {
@@ -97,50 +110,43 @@
             border-bottom: 4px solid #e9b87a;
             padding-bottom: 20px;
             margin-bottom: 25px;
-            text-shadow: 0 0 15px #b87c3a;
         }
         
         #itemsContainer {
-            min-height: 400px;
+            min-height: 300px;
         }
         
         .item {
-            font-size: 22px;
+            font-size: 24px;
             font-weight: bold;
-            padding: 15px 20px;
+            padding: 18px 20px;
             margin: 12px 0;
             background: #1e3a4a;
             border-radius: 60px;
             border-left: 10px solid #f0b87a;
             box-shadow: 0 6px 0 #0a1a2a;
-            transition: 0.3s;
             display: flex;
             align-items: center;
             gap: 15px;
         }
         
-        /* Стиль для НАЙДЕННЫХ предметов - зачеркивание */
         .item.found {
             background: #2a5a4a;
             border-left-color: #7fe0b2;
             text-decoration: line-through;
             opacity: 0.7;
-            transform: scale(0.98);
-            box-shadow: none;
         }
         
         .item-emoji {
-            font-size: 32px;
+            font-size: 36px;
         }
         
         #message {
             text-align: center;
             font-size: 28px;
-            font-weight: bold;
             color: #ffe68f;
-            margin: 25px 0;
+            margin: 20px 0;
             min-height: 50px;
-            text-shadow: 0 0 20px #ffa500;
         }
         
         .reset-btn {
@@ -157,7 +163,6 @@
             box-shadow: 0 8px 0 #9b6e3a;
             transition: 0.1s;
             margin-top: 15px;
-            font-family: 'Segoe UI', sans-serif;
         }
         
         .reset-btn:active {
@@ -174,40 +179,58 @@
             padding: 12px;
             border-radius: 60px;
         }
+        
+        .coords-display {
+            background: #000;
+            color: #0f0;
+            font-size: 24px;
+            padding: 10px;
+            border-radius: 30px;
+            text-align: center;
+            margin-top: 15px;
+            border: 2px solid #0f0;
+        }
     </style>
 </head>
 <body>
     <div class="game-container">
-        <div class="instruction">🔍 НАВЕДИ ЛУПУ И КЛИКНИ НА ПРЕДМЕТ</div>
+        <div class="instruction">🔍 КЛИКАЙ ПО ПРЕДМЕТАМ - ПОЛУЧИШЬ ИХ КООРДИНАТЫ</div>
         <div class="game-panel">
             <div class="image-zone" id="imageZone">
                 <img src="lupagame.jpg" id="gameImage" alt="Найди игрушки">
-                <canvas id="effectCanvas"></canvas>
+                <!-- Канвас для отображения координат -->
+                <canvas id="debugCanvas"></canvas>
                 <div class="magnifier-circle" id="magnifier"></div>
             </div>
             
             <div class="items-list">
                 <h2>🎯 НАЙДИ:</h2>
-                <div id="itemsContainer"></div>
+                <div id="itemsContainer">
+                    <!-- ВРЕМЕННО ПУСТО - СНАЧАЛА НАСТРОИМ КООРДИНАТЫ -->
+                    <div class="item" style="opacity:0.5">👇 Сначала кликни</div>
+                    <div class="item" style="opacity:0.5">👇 на предметы</div>
+                </div>
                 <div id="message"></div>
-                <button class="reset-btn" onclick="resetGame()">🔄 НОВАЯ ИГРА</button>
+                <button class="reset-btn" onclick="resetCoords()">🔄 СБРОС КООРДИНАТ</button>
             </div>
+        </div>
+        
+        <!-- ПАНЕЛЬ С КООРДИНАТАМИ -->
+        <div class="coords-display" id="coordsDisplay">
+            👆 Кликни на предмет, чтобы узнать его координаты
         </div>
     </div>
 
     <script>
         // --------------------------------------------------------
-        // ТВОИ ПРЕДМЕТЫ (подстрой координаты под свою картинку)
+        // ВРЕМЕННО ПУСТОЙ МАССИВ - ТЫ СКАЖЕШЬ КООРДИНАТЫ
         // --------------------------------------------------------
-        const items = [
-            { name: "🐘 СЛОН", emoji: "🐘", x: 300, y: 250, radius: 50, found: false },
-            { name: "⏰ ЧАСЫ", emoji: "⏰", x: 600, y: 180, radius: 45, found: false },
-            { name: "🧸 МЕДВЕДЬ", emoji: "🧸", x: 450, y: 400, radius: 55, found: false },
-            { name: "🪵 БУРАТИНО", emoji: "🪵", x: 200, y: 450, radius: 50, found: false },
-            { name: "🚂 ПАРОВОЗ", emoji: "🚂", x: 700, y: 350, radius: 60, found: false },
-            { name: "🏀 МЯЧ", emoji: "🏀", x: 550, y: 500, radius: 45, found: false },
-            { name: "📚 КНИГА", emoji: "📚", x: 150, y: 150, radius: 40, found: false },
-            { name: "🧩 ПАЗЛ", emoji: "🧩", x: 400, y: 100, radius: 40, found: false }
+        let items = [
+            { name: "🐘 СЛОНИК", emoji: "🐘", x: 0, y: 0, radius: 50, found: false },
+            { name: "🧸 МЕДВЕДЬ", emoji: "🧸", x: 0, y: 0, radius: 50, found: false },
+            { name: "⏰ ЧАСЫ", emoji: "⏰", x: 0, y: 0, radius: 45, found: false },
+            { name: "🦆 УТКА", emoji: "🦆", x: 0, y: 0, radius: 45, found: false },
+            { name: "🪵 БУРАТИНО", emoji: "🪵", x: 0, y: 0, radius: 50, found: false }
         ];
 
         const imageZone = document.getElementById('imageZone');
@@ -215,97 +238,74 @@
         const magnifier = document.getElementById('magnifier');
         const itemsContainer = document.getElementById('itemsContainer');
         const messageDiv = document.getElementById('message');
-        const effectCanvas = document.getElementById('effectCanvas');
-        const ctx = effectCanvas.getContext('2d');
+        const debugCanvas = document.getElementById('debugCanvas');
+        const coordsDisplay = document.getElementById('coordsDisplay');
+        const ctx = debugCanvas.getContext('2d');
 
-        // Для анимации
-        let animationActive = false;
-        let animX = 0, animY = 0, animRadius = 0, animProgress = 0;
+        // Храним последние координаты
+        let lastX = 0, lastY = 0;
 
-        // ОТОБРАЖЕНИЕ СПИСКА ПРЕДМЕТОВ (с зачеркиванием найденных)
+        // ОТОБРАЖЕНИЕ СПИСКА (временно показывает "ждем координаты")
         function updateItemsList() {
             let html = '';
             items.forEach(item => {
-                const foundClass = item.found ? 'found' : '';
-                html += `<div class="item ${foundClass}"><span class="item-emoji">${item.emoji}</span> ${item.name}</div>`;
+                // Показываем, что координаты еще не установлены
+                const coordStatus = (item.x === 0 && item.y === 0) ? '❓' : '✅';
+                html += `<div class="item"><span class="item-emoji">${item.emoji}</span> ${item.name} ${coordStatus}</div>`;
             });
             itemsContainer.innerHTML = html;
-
-            if (items.every(item => item.found)) {
-                messageDiv.innerHTML = '🎉 ТЫ НАШЁЛ ВСЕ ИГРУШКИ! 🎉';
-            } else {
-                messageDiv.innerHTML = '';
-            }
         }
 
-        // АНИМАЦИЯ ВСПЫШКИ (зеленый круг)
-        function startAnimation(x, y) {
-            animX = x;
-            animY = y;
-            animProgress = 1.0; // Начинаем с максимума
-            animationActive = true;
-            requestAnimationFrame(drawAnimation);
-        }
-
-        function drawAnimation() {
-            if (!animationActive) return;
-
-            // Очищаем канвас
-            ctx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
-
-            // Рисуем круг с прозрачностью
-            ctx.beginPath();
-            ctx.arc(animX, animY, 50 * (1 + (1 - animProgress) * 2), 0, 2 * Math.PI);
-            ctx.fillStyle = `rgba(100, 255, 100, ${animProgress * 0.7})`;
-            ctx.fill();
+        // ОТЛАДКА - рисуем точку и показываем координаты
+        function drawDebugPoint(x, y, imgX, imgY) {
+            ctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
             
-            // Второй круг поменьше
+            // Рисуем перекрестие
             ctx.beginPath();
-            ctx.arc(animX, animY, 30 * animProgress, 0, 2 * Math.PI);
-            ctx.fillStyle = `rgba(255, 255, 100, ${animProgress})`;
-            ctx.fill();
-
-            animProgress -= 0.05;
-            if (animProgress <= 0) {
-                animationActive = false;
-                ctx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
-            } else {
-                requestAnimationFrame(drawAnimation);
-            }
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.moveTo(x - 20, y);
+            ctx.lineTo(x + 20, y);
+            ctx.moveTo(x, y - 20);
+            ctx.lineTo(x, y + 20);
+            ctx.stroke();
+            
+            // Рисуем круг области
+            ctx.beginPath();
+            ctx.arc(x, y, 50, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'yellow';
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Обновляем панель с координатами
+            coordsDisplay.innerHTML = `🖱️ Клик: (${Math.round(x)}, ${Math.round(y)}) | 🖼️ На картинке: (${Math.round(imgX)}, ${Math.round(imgY)})`;
         }
 
-        // ОБРАБОТКА КЛИКА
+        // ОБРАБОТКА КЛИКА - ПОКАЗЫВАЕМ КООРДИНАТЫ
         imageZone.addEventListener('click', (e) => {
             const rect = imageZone.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
 
-            // Масштабируем координаты под размер оригинальной картинки
+            // Масштабируем под размер оригинальной картинки
             const scaleX = image.naturalWidth / rect.width;
             const scaleY = image.naturalHeight / rect.height;
             const imgX = clickX * scaleX;
             const imgY = clickY * scaleY;
 
-            // Проверяем каждый предмет
-            items.forEach(item => {
-                if (!item.found) {
-                    const dx = imgX - item.x;
-                    const dy = imgY - item.y;
-                    const distance = Math.sqrt(dx*dx + dy*dy);
-                    if (distance < item.radius) {
-                        item.found = true;
-                        
-                        // Запускаем анимацию в месте клика
-                        startAnimation(clickX, clickY);
-                        
-                        // Обновляем список
-                        updateItemsList();
-                    }
-                }
-            });
+            // Запоминаем
+            lastX = Math.round(imgX);
+            lastY = Math.round(imgY);
+            
+            // Рисуем отладку
+            drawDebugPoint(clickX, clickY, imgX, imgY);
+            
+            // Выводим в консоль (на всякий случай)
+            console.log(`Координаты на картинке: X=${Math.round(imgX)}, Y=${Math.round(imgY)}`);
         });
 
-        // ЛУПА (теперь просто обводка, без размытия)
+        // ЛУПА
         imageZone.addEventListener('mousemove', (e) => {
             const rect = imageZone.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -320,18 +320,17 @@
             magnifier.style.display = 'none';
         });
 
-        // СБРОС ИГРЫ
-        function resetGame() {
-            items.forEach(item => item.found = false);
-            updateItemsList();
-            ctx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
+        // СБРОС КООРДИНАТ (не сбрасывает найденные, просто очищает канвас)
+        function resetCoords() {
+            ctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
+            coordsDisplay.innerHTML = '👆 Кликни на предмет, чтобы узнать его координаты';
         }
 
-        // НАСТРОЙКА РАЗМЕРОВ КАНВАСА
+        // НАСТРОЙКА РАЗМЕРОВ
         function resizeCanvas() {
             const rect = imageZone.getBoundingClientRect();
-            effectCanvas.width = rect.width;
-            effectCanvas.height = rect.height;
+            debugCanvas.width = rect.width;
+            debugCanvas.height = rect.height;
         }
 
         window.addEventListener('resize', resizeCanvas);
