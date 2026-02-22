@@ -53,7 +53,6 @@
             background: #2a3a4a;
         }
         
-        /* ЛУПА - четкая */
         .magnifier-circle {
             position: absolute;
             width: 140px;
@@ -66,31 +65,6 @@
             z-index: 20;
             display: none;
             transform: translate(-50%, -50%);
-        }
-        
-        /* Канвас для отладки */
-        #debugCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 25;
-        }
-        
-        /* Панель отладки */
-        .debug-panel {
-            background: rgba(0,0,0,0.8);
-            color: #0f0;
-            font-family: monospace;
-            font-size: 18px;
-            padding: 15px 25px;
-            border-radius: 50px;
-            margin-top: 20px;
-            border: 2px solid #0f0;
-            text-align: center;
-            width: 100%;
         }
         
         .items-list {
@@ -128,6 +102,7 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            transition: 0.3s;
         }
         
         .item.found {
@@ -135,6 +110,7 @@
             border-left-color: #7fe0b2;
             text-decoration: line-through;
             opacity: 0.7;
+            transform: scale(0.98);
         }
         
         .item-emoji {
@@ -179,58 +155,66 @@
             padding: 12px;
             border-radius: 60px;
         }
-        
-        .coords-display {
-            background: #000;
-            color: #0f0;
-            font-size: 24px;
-            padding: 10px;
-            border-radius: 30px;
-            text-align: center;
-            margin-top: 15px;
-            border: 2px solid #0f0;
-        }
     </style>
 </head>
 <body>
     <div class="game-container">
-        <div class="instruction">🔍 КЛИКАЙ ПО ПРЕДМЕТАМ - ПОЛУЧИШЬ ИХ КООРДИНАТЫ</div>
+        <div class="instruction">🔍 НАВЕДИ ЛУПУ И КЛИКНИ НА ИГРУШКУ</div>
         <div class="game-panel">
             <div class="image-zone" id="imageZone">
                 <img src="lupagame.jpg" id="gameImage" alt="Найди игрушки">
-                <!-- Канвас для отображения координат -->
-                <canvas id="debugCanvas"></canvas>
                 <div class="magnifier-circle" id="magnifier"></div>
             </div>
             
             <div class="items-list">
                 <h2>🎯 НАЙДИ:</h2>
-                <div id="itemsContainer">
-                    <!-- ВРЕМЕННО ПУСТО - СНАЧАЛА НАСТРОИМ КООРДИНАТЫ -->
-                    <div class="item" style="opacity:0.5">👇 Сначала кликни</div>
-                    <div class="item" style="opacity:0.5">👇 на предметы</div>
-                </div>
+                <div id="itemsContainer"></div>
                 <div id="message"></div>
-                <button class="reset-btn" onclick="resetCoords()">🔄 СБРОС КООРДИНАТ</button>
+                <button class="reset-btn" onclick="resetGame()">🔄 НОВАЯ ИГРА</button>
             </div>
-        </div>
-        
-        <!-- ПАНЕЛЬ С КООРДИНАТАМИ -->
-        <div class="coords-display" id="coordsDisplay">
-            👆 Кликни на предмет, чтобы узнать его координаты
         </div>
     </div>
 
     <script>
         // --------------------------------------------------------
-        // ВРЕМЕННО ПУСТОЙ МАССИВ - ТЫ СКАЖЕШЬ КООРДИНАТЫ
+        // ТОЧНЫЕ КООРДИНАТЫ НА ОСНОВЕ ТВОИХ КЛИКОВ
         // --------------------------------------------------------
-        let items = [
-            { name: "🐘 СЛОНИК", emoji: "🐘", x: 0, y: 0, radius: 50, found: false },
-            { name: "🧸 МЕДВЕДЬ", emoji: "🧸", x: 0, y: 0, radius: 50, found: false },
-            { name: "⏰ ЧАСЫ", emoji: "⏰", x: 0, y: 0, radius: 45, found: false },
-            { name: "🦆 УТКА", emoji: "🦆", x: 0, y: 0, radius: 45, found: false },
-            { name: "🪵 БУРАТИНО", emoji: "🪵", x: 0, y: 0, radius: 50, found: false }
+        const items = [
+            { 
+                name: "🐘 СЛОНИК", 
+                emoji: "🐘", 
+                x: 280, y: 157, // Центр на основе первого клика
+                radius: 60, // Чуть больше, чтобы покрыть область
+                found: false 
+            },
+            { 
+                name: "🧸 МЕДВЕДЬ", 
+                emoji: "🧸", 
+                x: 210, y: 540, // Среднее между 459 и 618
+                radius: 100, // БОЛЬШОЙ РАДИУС (медведь крупный)
+                found: false 
+            },
+            { 
+                name: "⏰ ЧАСЫ", 
+                emoji: "⏰", 
+                x: 344, y: 170, // Среднее между 132 и 215
+                radius: 70, // Покрывает обе точки
+                found: false 
+            },
+            { 
+                name: "🦆 УТКА", 
+                emoji: "🦆", 
+                x: 348, y: 616, // Твои точные координаты
+                radius: 60, 
+                found: false 
+            },
+            { 
+                name: "🪵 БУРАТИНО", 
+                emoji: "🪵", 
+                x: 286, y: 789, // Твои точные координаты
+                radius: 60, 
+                found: false 
+            }
         ];
 
         const imageZone = document.getElementById('imageZone');
@@ -238,71 +222,64 @@
         const magnifier = document.getElementById('magnifier');
         const itemsContainer = document.getElementById('itemsContainer');
         const messageDiv = document.getElementById('message');
-        const debugCanvas = document.getElementById('debugCanvas');
-        const coordsDisplay = document.getElementById('coordsDisplay');
-        const ctx = debugCanvas.getContext('2d');
 
-        // Храним последние координаты
-        let lastX = 0, lastY = 0;
-
-        // ОТОБРАЖЕНИЕ СПИСКА (временно показывает "ждем координаты")
+        // ОТОБРАЖЕНИЕ СПИСКА
         function updateItemsList() {
             let html = '';
             items.forEach(item => {
-                // Показываем, что координаты еще не установлены
-                const coordStatus = (item.x === 0 && item.y === 0) ? '❓' : '✅';
-                html += `<div class="item"><span class="item-emoji">${item.emoji}</span> ${item.name} ${coordStatus}</div>`;
+                const foundClass = item.found ? 'found' : '';
+                html += `<div class="item ${foundClass}"><span class="item-emoji">${item.emoji}</span> ${item.name}</div>`;
             });
             itemsContainer.innerHTML = html;
+
+            if (items.every(item => item.found)) {
+                messageDiv.innerHTML = '🎉 ТЫ НАШЁЛ ВСЕ ИГРУШКИ! 🎉';
+            } else {
+                messageDiv.innerHTML = '';
+            }
         }
 
-        // ОТЛАДКА - рисуем точку и показываем координаты
-        function drawDebugPoint(x, y, imgX, imgY) {
-            ctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
-            
-            // Рисуем перекрестие
-            ctx.beginPath();
-            ctx.strokeStyle = 'red';
-            ctx.lineWidth = 2;
-            ctx.moveTo(x - 20, y);
-            ctx.lineTo(x + 20, y);
-            ctx.moveTo(x, y - 20);
-            ctx.lineTo(x, y + 20);
-            ctx.stroke();
-            
-            // Рисуем круг области
-            ctx.beginPath();
-            ctx.arc(x, y, 50, 0, 2 * Math.PI);
-            ctx.strokeStyle = 'yellow';
-            ctx.setLineDash([5, 5]);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            
-            // Обновляем панель с координатами
-            coordsDisplay.innerHTML = `🖱️ Клик: (${Math.round(x)}, ${Math.round(y)}) | 🖼️ На картинке: (${Math.round(imgX)}, ${Math.round(imgY)})`;
-        }
-
-        // ОБРАБОТКА КЛИКА - ПОКАЗЫВАЕМ КООРДИНАТЫ
+        // ОБРАБОТКА КЛИКА
         imageZone.addEventListener('click', (e) => {
             const rect = imageZone.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
 
-            // Масштабируем под размер оригинальной картинки
+            // Масштабируем координаты под размер оригинальной картинки
             const scaleX = image.naturalWidth / rect.width;
             const scaleY = image.naturalHeight / rect.height;
             const imgX = clickX * scaleX;
             const imgY = clickY * scaleY;
 
-            // Запоминаем
-            lastX = Math.round(imgX);
-            lastY = Math.round(imgY);
-            
-            // Рисуем отладку
-            drawDebugPoint(clickX, clickY, imgX, imgY);
-            
-            // Выводим в консоль (на всякий случай)
-            console.log(`Координаты на картинке: X=${Math.round(imgX)}, Y=${Math.round(imgY)}`);
+            // Проверяем каждый предмет
+            items.forEach(item => {
+                if (!item.found) {
+                    const dx = imgX - item.x;
+                    const dy = imgY - item.y;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    // Специальная проверка для медведя (очень большой радиус)
+                    if (item.name === "🧸 МЕДВЕДЬ") {
+                        if (distance < 100) { // Радиус 100 для медведя
+                            item.found = true;
+                        }
+                    } 
+                    // Для часов - увеличенный радиус
+                    else if (item.name === "⏰ ЧАСЫ") {
+                        if (distance < 70) {
+                            item.found = true;
+                        }
+                    }
+                    // Для остальных - стандартный радиус 60
+                    else {
+                        if (distance < 60) {
+                            item.found = true;
+                        }
+                    }
+                }
+            });
+
+            updateItemsList();
         });
 
         // ЛУПА
@@ -320,30 +297,19 @@
             magnifier.style.display = 'none';
         });
 
-        // СБРОС КООРДИНАТ (не сбрасывает найденные, просто очищает канвас)
-        function resetCoords() {
-            ctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
-            coordsDisplay.innerHTML = '👆 Кликни на предмет, чтобы узнать его координаты';
+        // СБРОС ИГРЫ
+        function resetGame() {
+            items.forEach(item => item.found = false);
+            updateItemsList();
         }
-
-        // НАСТРОЙКА РАЗМЕРОВ
-        function resizeCanvas() {
-            const rect = imageZone.getBoundingClientRect();
-            debugCanvas.width = rect.width;
-            debugCanvas.height = rect.height;
-        }
-
-        window.addEventListener('resize', resizeCanvas);
 
         // ЖДЁМ ЗАГРУЗКИ КАРТИНКИ
         image.onload = () => {
             console.log('Картинка загружена!');
-            resizeCanvas();
             updateItemsList();
         };
 
         if (image.complete) {
-            resizeCanvas();
             updateItemsList();
         }
 
