@@ -87,34 +87,28 @@
         }
         
         #itemsContainer {
-            min-height: 300px;
-        }
-        
-        .item {
-            font-size: 24px;
-            font-weight: bold;
-            padding: 18px 20px;
-            margin: 12px 0;
-            background: #1e3a4a;
-            border-radius: 60px;
-            border-left: 10px solid #f0b87a;
-            box-shadow: 0 6px 0 #0a1a2a;
+            min-height: 400px;
             display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 15px;
+        }
+        
+        /* КАРТИНКИ В СПИСКЕ */
+        .item-image {
+            width: 100%;
+            height: 80px;
+            object-fit: contain;
             transition: 0.3s;
+            filter: brightness(1);
+            border-radius: 15px;
+            background: rgba(255,255,255,0.1);
+            padding: 5px;
         }
         
-        .item.found {
-            background: #2a5a4a;
-            border-left-color: #7fe0b2;
-            text-decoration: line-through;
-            opacity: 0.7;
-            transform: scale(0.98);
-        }
-        
-        .item-emoji {
-            font-size: 36px;
+        .item-image.found {
+            filter: brightness(0.5) grayscale(1);
+            opacity: 0.5;
+            transform: scale(0.95);
         }
         
         #message {
@@ -177,41 +171,41 @@
 
     <script>
         // --------------------------------------------------------
-        // ТОЧНЫЕ КООРДИНАТЫ НА ОСНОВЕ ТВОИХ КЛИКОВ
+        // ТВОИ ПРЕДМЕТЫ С КАРТИНКАМИ (ИМЕНА ФАЙЛОВ КАК ТЫ СКАЗАЛ)
         // --------------------------------------------------------
         const items = [
             { 
-                name: "🐘 СЛОНИК", 
-                emoji: "🐘", 
-                x: 280, y: 157, // Центр на основе первого клика
-                radius: 60, // Чуть больше, чтобы покрыть область
-                found: false 
-            },
-            { 
-                name: "🧸 МЕДВЕДЬ", 
-                emoji: "🧸", 
-                x: 210, y: 540, // Среднее между 459 и 618
-                radius: 100, // БОЛЬШОЙ РАДИУС (медведь крупный)
-                found: false 
-            },
-            { 
-                name: "⏰ ЧАСЫ", 
-                emoji: "⏰", 
-                x: 344, y: 170, // Среднее между 132 и 215
-                radius: 70, // Покрывает обе точки
-                found: false 
-            },
-            { 
-                name: "🦆 УТКА", 
-                emoji: "🦆", 
-                x: 348, y: 616, // Твои точные координаты
+                name: "СЛОНИК", 
+                image: "slon.jpg",      // слон
+                x: 280, y: 157, 
                 radius: 60, 
                 found: false 
             },
             { 
-                name: "🪵 БУРАТИНО", 
-                emoji: "🪵", 
-                x: 286, y: 789, // Твои точные координаты
+                name: "МЕДВЕДЬ", 
+                image: "medved.jpg",    // медведь
+                x: 210, y: 540, 
+                radius: 100, 
+                found: false 
+            },
+            { 
+                name: "ЧАСЫ", 
+                image: "chasi.jpg",     // часы
+                x: 344, y: 170, 
+                radius: 70, 
+                found: false 
+            },
+            { 
+                name: "УТКА", 
+                image: "utka.jpg",      // утка
+                x: 348, y: 616, 
+                radius: 60, 
+                found: false 
+            },
+            { 
+                name: "БУРАТИНО", 
+                image: "buratino.jpg",  // буратино
+                x: 286, y: 789, 
                 radius: 60, 
                 found: false 
             }
@@ -223,12 +217,12 @@
         const itemsContainer = document.getElementById('itemsContainer');
         const messageDiv = document.getElementById('message');
 
-        // ОТОБРАЖЕНИЕ СПИСКА
+        // ОТОБРАЖЕНИЕ СПИСКА С КАРТИНКАМИ
         function updateItemsList() {
             let html = '';
             items.forEach(item => {
                 const foundClass = item.found ? 'found' : '';
-                html += `<div class="item ${foundClass}"><span class="item-emoji">${item.emoji}</span> ${item.name}</div>`;
+                html += `<img src="${item.image}" class="item-image ${foundClass}" alt="${item.name}" title="${item.name}">`;
             });
             itemsContainer.innerHTML = html;
 
@@ -245,36 +239,19 @@
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
 
-            // Масштабируем координаты под размер оригинальной картинки
             const scaleX = image.naturalWidth / rect.width;
             const scaleY = image.naturalHeight / rect.height;
             const imgX = clickX * scaleX;
             const imgY = clickY * scaleY;
 
-            // Проверяем каждый предмет
             items.forEach(item => {
                 if (!item.found) {
                     const dx = imgX - item.x;
                     const dy = imgY - item.y;
                     const distance = Math.sqrt(dx*dx + dy*dy);
                     
-                    // Специальная проверка для медведя (очень большой радиус)
-                    if (item.name === "🧸 МЕДВЕДЬ") {
-                        if (distance < 100) { // Радиус 100 для медведя
-                            item.found = true;
-                        }
-                    } 
-                    // Для часов - увеличенный радиус
-                    else if (item.name === "⏰ ЧАСЫ") {
-                        if (distance < 70) {
-                            item.found = true;
-                        }
-                    }
-                    // Для остальных - стандартный радиус 60
-                    else {
-                        if (distance < 60) {
-                            item.found = true;
-                        }
+                    if (distance < item.radius) {
+                        item.found = true;
                     }
                 }
             });
@@ -303,9 +280,8 @@
             updateItemsList();
         }
 
-        // ЖДЁМ ЗАГРУЗКИ КАРТИНКИ
+        // ЗАГРУЗКА
         image.onload = () => {
-            console.log('Картинка загружена!');
             updateItemsList();
         };
 
