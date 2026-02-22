@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🔍 Найди игрушки</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(135deg, #2b3a4a, #1a2a3a);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 30px;
+        }
+        .game-container {
+            background: #2c3e4f;
+            border-radius: 40px;
+            padding: 30px;
+            border: 5px solid #e9b87a;
+            box-shadow: 0 30px 40px rgba(0,0,0,0.9);
+            max-width: 1300px;
+            width: 100%;
+        }
+        .game-panel {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        /* УВЕЛИЧИЛ ОБЛАСТЬ КАРТИНКИ */
+        .image-zone {
+            position: relative;
+            width: 900px;
+            height: 650px;
+            border-radius: 30px;
+            overflow: hidden;
+            border: 6px solid #d4a259;
+            cursor: crosshair;
+            background: #3a4a5a;
+            box-shadow: 0 10px 20px black;
+        }
+        
+        #gameImage {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;  /* Показывает всю картинку целиком */
+            display: block;
+            background: #2a3a4a;
+        }
+        
+        /* КРУГЛАЯ ЛУПА */
+        .magnifier-circle {
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            border: 5px solid gold;
+            background: rgba(255,255,255,0.2);
+            box-shadow: 0 0 40px gold, inset 0 0 30px white;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+            transform: translate(-50%, -50%);
+            backdrop-filter: blur(4px);
+        }
+        
+        /* СПИСОК ПРЕДМЕТОВ */
+        .items-list {
+            background: #2a3f4e;
+            border-radius: 40px;
+            padding: 30px 25px;
+            width: 300px;
+            border: 4px solid #e9b87a;
+            color: white;
+            box-shadow: inset 0 0 20px #1a2a3a;
+        }
+        
+        .items-list h2 {
+            text-align: center;
+            font-size: 36px;
+            color: #ffd966;
+            border-bottom: 4px solid #e9b87a;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+            text-shadow: 0 0 15px #b87c3a;
+        }
+        
+        #itemsContainer {
+            min-height: 400px;
+        }
+        
+        .item {
+            font-size: 22px;
+            font-weight: bold;
+            padding: 15px 20px;
+            margin: 12px 0;
+            background: #1e3a4a;
+            border-radius: 60px;
+            border-left: 10px solid #f0b87a;
+            box-shadow: 0 6px 0 #0a1a2a;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .item.found {
+            background: #1e5a4a;
+            border-left-color: #8fecb0;
+            text-decoration: line-through;
+            opacity: 0.8;
+            box-shadow: none;
+        }
+        
+        .item-emoji {
+            font-size: 32px;
+        }
+        
+        #message {
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffe68f;
+            margin: 25px 0;
+            min-height: 50px;
+            text-shadow: 0 0 20px #ffa500;
+        }
+        
+        .reset-btn {
+            background: #e9b87a;
+            border: none;
+            font-size: 26px;
+            font-weight: bold;
+            padding: 18px 0;
+            border-radius: 70px;
+            width: 100%;
+            cursor: pointer;
+            color: #1e2a3a;
+            border: 3px solid #ffdfaa;
+            box-shadow: 0 8px 0 #9b6e3a;
+            transition: 0.1s;
+            margin-top: 15px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        .reset-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 2px 0 #9b6e3a;
+        }
+        
+        .instruction {
+            color: #e9d4b0;
+            font-size: 22px;
+            margin-bottom: 25px;
+            text-align: center;
+            background: rgba(0,0,0,0.3);
+            padding: 12px;
+            border-radius: 60px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="instruction">🔍 НАВЕДИ ЛУПУ НА ПРЕДМЕТ И КЛИКНИ, ЧТОБЫ НАЙТИ</div>
+        <div class="game-panel">
+            <div class="image-zone" id="imageZone">
+                <!-- ТВОЯ КАРТИНКА ИЗ ПАПКИ -->
+                <img src="lupagame.jpg" id="gameImage" alt="Найди игрушки">
+                <div class="magnifier-circle" id="magnifier"></div>
+            </div>
+            
+            <div class="items-list">
+                <h2>🎯 НАЙДИ:</h2>
+                <div id="itemsContainer"></div>
+                <div id="message"></div>
+                <button class="reset-btn" onclick="resetGame()">🔄 НОВАЯ ИГРА</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --------------------------------------------------------
+        // ТВОИ ПРЕДМЕТЫ (координаты примерные, подстроим позже)
+        // --------------------------------------------------------
+        const items = [
+            { name: "🐘 СЛОН", emoji: "🐘", x: 300, y: 250, radius: 50, found: false },
+            { name: "⏰ ЧАСЫ", emoji: "⏰", x: 600, y: 180, radius: 45, found: false },
+            { name: "🧸 МЕДВЕДЬ", emoji: "🧸", x: 450, y: 400, radius: 55, found: false },
+            { name: "🪵 БУРАТИНО", emoji: "🪵", x: 200, y: 450, radius: 50, found: false },
+            { name: "🚂 ПАРОВОЗ", emoji: "🚂", x: 700, y: 350, radius: 60, found: false },
+            { name: "🏀 МЯЧ", emoji: "🏀", x: 550, y: 500, radius: 45, found: false },
+            { name: "📚 КНИГА", emoji: "📚", x: 150, y: 150, radius: 40, found: false },
+            { name: "🧩 ПАЗЛ", emoji: "🧩", x: 400, y: 100, radius: 40, found: false }
+        ];
+
+        const imageZone = document.getElementById('imageZone');
+        const image = document.getElementById('gameImage');
+        const magnifier = document.getElementById('magnifier');
+        const itemsContainer = document.getElementById('itemsContainer');
+        const messageDiv = document.getElementById('message');
+
+        // ОТОБРАЖЕНИЕ СПИСКА ПРЕДМЕТОВ
+        function updateItemsList() {
+            let html = '';
+            items.forEach(item => {
+                if (!item.found) {
+                    html += `<div class="item"><span class="item-emoji">${item.emoji}</span> ${item.name}</div>`;
+                }
+            });
+            itemsContainer.innerHTML = html;
+
+            if (items.every(item => item.found)) {
+                messageDiv.innerHTML = '🎉 ТЫ НАШЁЛ ВСЕ ИГРУШКИ! 🎉';
+            } else {
+                messageDiv.innerHTML = '';
+            }
+        }
+
+        // ОБРАБОТКА КЛИКА (ПРОВЕРКА, ПОПАЛ ЛИ В ПРЕДМЕТ)
+        imageZone.addEventListener('click', (e) => {
+            const rect = imageZone.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // Масштабируем координаты под размер оригинальной картинки
+            const scaleX = image.naturalWidth / rect.width;
+            const scaleY = image.naturalHeight / rect.height;
+            const imgX = clickX * scaleX;
+            const imgY = clickY * scaleY;
+
+            items.forEach(item => {
+                if (!item.found) {
+                    const dx = imgX - item.x;
+                    const dy = imgY - item.y;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    if (distance < item.radius) {
+                        item.found = true;
+                    }
+                }
+            });
+
+            updateItemsList();
+        });
+
+        // ЛУПА СЛЕДУЕТ ЗА МЫШКОЙ
+        imageZone.addEventListener('mousemove', (e) => {
+            const rect = imageZone.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            magnifier.style.display = 'block';
+            magnifier.style.left = x + 'px';
+            magnifier.style.top = y + 'px';
+        });
+
+        imageZone.addEventListener('mouseleave', () => {
+            magnifier.style.display = 'none';
+        });
+
+        // СБРОС ИГРЫ
+        function resetGame() {
+            items.forEach(item => item.found = false);
+            updateItemsList();
+        }
+
+        // ЖДЁМ ЗАГРУЗКИ КАРТИНКИ
+        image.onload = () => {
+            console.log('Картинка загружена! Размер:', image.naturalWidth, 'x', image.naturalHeight);
+            updateItemsList();
+        };
+
+        // ЕСЛИ КАРТИНКА УЖЕ ЗАГРУЖЕНА
+        if (image.complete) {
+            console.log('Картинка уже загружена');
+            updateItemsList();
+        }
+
+        // ПЕРВОНАЧАЛЬНОЕ ОТОБРАЖЕНИЕ
+        updateItemsList();
+    </script>
+</body>
+</html>
